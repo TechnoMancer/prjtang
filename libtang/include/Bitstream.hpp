@@ -7,6 +7,10 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <iostream>
+#include <boost/optional.hpp>
+
+using namespace std;
 
 namespace Tang {
 
@@ -24,10 +28,19 @@ class Crc16
     uint16_t update_block(const std::vector<uint8_t> &data, int start, int end);
 };
 
+class Chip;
+
 class Bitstream
 {
   public:
     static Bitstream read(std::istream &in);
+
+    // Python variant of the above, takes filename instead of istream
+    static Bitstream read_bit_py(std::string file);
+
+    // Deserialise a bitstream to a Chip
+    Chip deserialise_chip();
+    Chip deserialise_chip(boost::optional<uint32_t> idcode = boost::optional<uint32_t>());
 
     void parse(bool verbose_info, bool verbose_data);
     void parse_block(const std::vector<uint8_t> &data);
