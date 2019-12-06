@@ -97,14 +97,14 @@ def main():
 			tiles = [[0 for y in range(max_col)] for x in range(max_row)] 
 			prepare_tcl(path.join(database.get_tang_root(), "minitests", "tilegrid", "wire.tcl"), "work_tilegrid/wire.tcl", device, package)
 			prepare_pnl(family, device, package, max_row, max_col)
-			tangdinasty.run("wire.tcl", "work_tilegrid")
+			tangdinasty.run("wire.tcl", "work_tilegrid", stdout=True)
 			extract_elements("work_tilegrid/wire.log", tiles, max_row)
 			
 			file_loc = path.join(database.get_tang_root(), "minitests", "tilegrid", device + ".v")
 			if os.path.exists(file_loc):
 				shutil.copyfile(file_loc,path.join("work_tilegrid", device + ".v"))
 				prepare_tcl(path.join(database.get_tang_root(), "minitests", "tilegrid", "specific.tcl"), "work_tilegrid/specific.tcl", device, package)
-				tangdinasty.run("specific.tcl", "work_tilegrid")
+				tangdinasty.run("specific.tcl", "work_tilegrid", stdout=True)
 				extract_elements("work_tilegrid/" + device + ".log", tiles, max_row)
 
 			output_file = path.join(database.get_db_subdir(family, device), "tilegrid.json")
