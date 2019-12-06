@@ -1,0 +1,72 @@
+design "top"
+{
+	device
+	{
+		part eagle_s20;
+		architecture eagle;
+		package BG256;
+		speed ;
+	}
+	interface
+	{
+	}
+	instance "config_inst"
+	{
+		model config;
+		property
+		{
+		}
+		attribute
+		{
+			DONE_PERSISTN:DISABLE
+			INIT_PERSISTN:DISABLE
+			JTAG_PERSISTN:DISABLE
+			PROGRAMN_PERSISTN:DISABLE
+		}
+		port
+		{
+		}
+		primitive
+		{
+		}
+		location x0y68_0;
+	}
+	instance "reg"
+	{
+		model ${model};
+		property
+		{
+		}
+		attribute
+		{
+			MODE:LOGIC
+			DEMUX${r}:${demux}
+			LSFMUX${r}:${lsfmux}
+			LSFXMUX${r}:${lsfxmux}
+			CEMUX:1
+			CLKMUX:CLK
+			CMIMUX${r}:${cmimux}
+			DFFMODE:FF
+			FORCE_KEEP:ON
+			GSR:ENABLE
+			INIT_LUTF0=16'b0000000000000000
+			INIT_LUTF1=16'b0000000000000000
+			INIT_LUTG0=16'b0000000000000000
+			INIT_LUTG1=16'b0000000000000000
+			REG0_REGSET:SET
+			REG0_SD:MI
+			REG1_REGSET:SET
+			REG1_SD:MI
+			SRMODE:ASYNC
+			SRMUX:SR
+			TESTMODE:OFF
+		}
+		port
+		{
+		}
+		primitive
+		{
+		}
+		location ${tile_loc}_${slice};
+	}
+}
