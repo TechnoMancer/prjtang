@@ -1,0 +1,34 @@
+design "top"
+{
+	device
+	{
+		part eagle_s20;
+		architecture eagle;
+		package BG256;
+		speed ;
+	}
+	interface
+	{
+	}
+	instance "config_inst"
+	{
+		model config;
+		property
+		{
+		}
+		attribute
+		{
+			DONE_PERSISTN:DISABLE
+			INIT_PERSISTN:DISABLE
+			JTAG_PERSISTN:DISABLE
+			PROGRAMN_PERSISTN:DISABLE
+		}
+		port
+		{
+		}
+		primitive
+		{
+		}
+		location x0y68_0;
+	}
+}
