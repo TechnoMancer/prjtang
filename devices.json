@@ -25,8 +25,12 @@
                         "BG256",
                         "QFN88"
                     ],
+                    "deviceid":"0x0a014c35",
+                    "frames": 1259,
+                    "bits_per_frame": 3904,
                     "max_col": 41,
-                    "max_row": 72
+                    "max_row": 72,
+                    "fuzz":1
                 }
             }
         },
