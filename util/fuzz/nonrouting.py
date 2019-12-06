@@ -1,0 +1,163 @@
+"""
+Utilities for fuzzing non-routing configuration. This is the counterpart to routing.py
+
+Adapted from Project Trellis
+"""
+
+import threading
+import tiles
+import database
+import bitstream
+import pytang
+
+import os
+from os import path
+from shutil import copyfile
+
+def fuzz_word_setting(config, name, length, get_pnl_substs, empty_bitfile=None):
+    """
+    Fuzz a multi-bit setting, such as LUT initialisation
+
+    :param config: FuzzConfig instance containing target device and tile of interest
+    :param name: name of the setting to store in the database
+    :param length: number of bits in the setting
+    :param get_pnl_substs: a callback function, that is first called with an array of bits to create a design with that setting
+    :param empty_bitfile: a path to a bit file without the parameter included, optional, which is used to determine the
+    default value
+    """
+    prefix = "thread{}_".format(threading.get_ident()) + name
+    tile_dbs = {tile: pytang.get_tile_bitdata(
+    pytang.TileLocator(config.family, config.device, tiles.type_from_fullname(tile))) for tile in
+    config.tiles}
+    if empty_bitfile is not None:
+        none_chip = pytang.Bitstream.read_bit(empty_bitfile).deserialise_chip()
+    else:
+        none_chip = None
+    baseline_bitf = config.build_design(config.pnl, get_pnl_substs([False for _ in range(length)]), prefix)
+    copyfile(baseline_bitf, path.join(config.workdir, prefix + "baseline.bit"))
+    baseline_chip = pytang.Bitstream.read_bit(baseline_bitf).deserialise_chip()
+
+    wsb = {tile: pytang.WordSettingBits() for tile in
+        config.tiles}
+    is_empty = {tile: True for tile in config.tiles}
+    for t in config.tiles:
+        wsb[t].name = name
+    for i in range(length):
+        bit_bitf = config.build_design(config.pnl, get_pnl_substs([(_ == i) for _ in range(length)]), prefix)
+        copyfile(bit_bitf, path.join(config.workdir, prefix + "bit{}.bit".format(i)))
+        bit_chip = pytang.Bitstream.read_bit(bit_bitf).deserialise_chip()
+        diff = bit_chip - baseline_chip
+        for tile in config.tiles:
+            if tile in diff:
+                wsb[tile].bits.append(pytang.BitGroup(diff[tile]))
+                is_empty[tile] = False
+            else:
+                wsb[tile].bits.append(pytang.BitGroup())
+            if none_chip is not None:
+                if wsb[tile].bits[i].match(none_chip.tiles[tile].cram):
+                    wsb[tile].defval.append(True)
+                else:
+                    wsb[tile].defval.append(False)
+    for t in config.tiles:
+        if not is_empty[t]:
+            tile_dbs[t].add_setting_word(wsb[t])
+                tile_dbs[t].save()
+
+
+def fuzz_enum_setting(config, name, values, get_pnl_substs, empty_bitfile=None, include_zeros=True, ignore_cover=None,
+                      opt_pref=None):
+    """
+    Fuzz a setting with multiple possible values
+
+    :param config: FuzzConfig instance containing target device and tile of interest
+    :param name: name of the setting to store in the database
+    :param values: list of values taken by the enum
+    :param get_pnl_substs: a callback function, that is first called with an array of bits to create a design with that setting
+    :param empty_bitfile: a path to a bit file without the parameter included, optional, which is used to determine the
+    default value
+    :param include_zeros: if set, bits set to zero are not included in db. Needed for settings such as CEMUX which share
+    bits with routing muxes to prevent conflicts.
+    :param ignore_cover: these values will also be checked, and bits changing between these will be ignored
+    :param opt_pref: bits exclusively set in these options will be included in all options overriding include_zeros
+    """
+    prefix = "thread{}_".format(threading.get_ident()) + name
+    tile_dbs = {tile: pytang.get_tile_bitdata(
+        pytang.TileLocator(config.family, config.device, tiles.type_from_fullname(tile))) for tile in
+        config.tiles}
+    if empty_bitfile is not None:
+        none_chip = pytang.Bitstream.read_bit(empty_bitfile).deserialise_chip()
+    else:
+        none_chip = None
+
+    changed_bits = set()
+    prev_tiles = {}
+    tiles_changed = set()
+    for val in values:
+        print("****** Fuzzing {} = {} ******".format(name, val))
+        bit_bitf = config.build_design(config.pnl, get_pnl_substs(val), prefix)
+        copyfile(bit_bitf, path.join(config.workdir, prefix + val + ".bit"))
+        bit_chip = pytang.Bitstream.read_bit(bit_bitf).deserialise_chip()
+        for prev in prev_tiles.values():
+            for tile in config.tiles:
+                diff = bit_chip.tiles[tile].cram - prev[tile]
+                if len(diff) > 0:
+                    tiles_changed.add(tile)
+                    for bit in diff:
+                        changed_bits.add((tile, bit.frame, bit.bit))
+        prev_tiles[val] = {}
+        for tile in config.tiles:
+            prev_tiles[val][tile] = bit_chip.tiles[tile].cram
+    if ignore_cover is not None:
+        ignore_changed_bits = set()
+        ignore_prev_tiles = {}
+        for ival in ignore_cover:
+            print("****** Fuzzing {} = {} [to ignore] ******".format(name, ival))
+            bit_bitf = config.build_design(config.pnl, get_pnl_substs(ival), prefix)
+            bit_chip = pytang.Bitstream.read_bit(bit_bitf).deserialise_chip()
+            for prev in ignore_prev_tiles.values():
+                for tile in config.tiles:
+                    diff = bit_chip.tiles[tile].cram - prev[tile]
+                    if len(diff) > 0:
+                        for bit in diff:
+                            ignore_changed_bits.add((tile, bit.frame, bit.bit))
+            ignore_prev_tiles[ival] = {}
+            for tile in config.tiles:
+                ignore_prev_tiles[ival][tile] = bit_chip.tiles[tile].cram
+        for ibit in ignore_changed_bits:
+            if ibit in changed_bits:
+                changed_bits.remove(ibit)
+    for tile in tiles_changed:
+        esb = pytang.EnumSettingBits()
+        esb.name = name
+        pref_exclusive = {}
+        if opt_pref is not None:
+            for val in values:
+                for (btile, bframe, bbit) in changed_bits:
+                    if btile == tile:
+                        state = prev_tiles[val][tile].bit(bframe, bbit)
+                        if state:
+                            if val in opt_pref:
+                                if (btile, bframe, bbit) not in pref_exclusive:
+                                    pref_exclusive[(btile, bframe, bbit)] = True
+                            else:
+                                pref_exclusive[(btile, bframe, bbit)] = False
+        for val in values:
+            bg = pytang.BitGroup()
+            for (btile, bframe, bbit) in changed_bits:
+                if btile == tile:
+                    state = prev_tiles[val][tile].bit(bframe, bbit)
+                    if state == 0 and not include_zeros and (
+                            none_chip is not None and not none_chip.tiles[tile].cram.bit(bframe, bbit)) \
+                            and (
+                            (btile, bframe, bbit) not in pref_exclusive or not pref_exclusive[(btile, bframe, bbit)]):
+                        continue
+                    cb = pytang.ConfigBit()
+                    cb.frame = bframe
+                    cb.bit = bbit
+                    cb.inv = (state == 0)
+                    bg.bits.add(cb)
+            esb.options[val] = bg
+            if none_chip is not None and bg.match(none_chip.tiles[tile].cram):
+                esb.defval = val
+        tile_dbs[tile].add_setting_enum(esb)
+        tile_dbs[tile].save()

@@ -12,6 +12,6 @@ fi
 
 SCRIPT_PATH=$(readlink -f "${BASH_SOURCE:-$0}")
 SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
-PYTHONLIBS_DIR="${SCRIPT_DIR}/util:${SCRIPT_DIR}/util/common"
 LIBTANG_DIR="${SCRIPT_DIR}/libtang"
+PYTHONLIBS_DIR="${SCRIPT_DIR}/util:${SCRIPT_DIR}/util/common:${SCRIPT_DIR}/util/fuzz"
 export PYTHONPATH="${LIBTANG_DIR}:${PYTHONLIBS_DIR}:${PYTHONPATH}"
