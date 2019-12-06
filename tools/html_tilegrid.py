@@ -7,10 +7,10 @@ import argparse
 import database
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('architecture', type=str,
-					help="FPGA architecture (e.g. ECP5)")
+parser.add_argument('family', type=str,
+					help="FPGA family (e.g. eagle)")
 parser.add_argument('part', type=str,
-					help="FPGA part (e.g. LFE5U-85F)")
+					help="FPGA part (e.g. eagle_s20)")
 parser.add_argument('outfile', type=argparse.FileType('w'),
 					help="output HTML file")
 
@@ -40,8 +40,8 @@ def get_colour(ttype):
 
 def main(argv):
 	args = parser.parse_args(argv[1:])
-	tilegrid = database.get_tilegrid(args.architecture, args.part)
-	device_info = database.get_devices()["architectures"][args.architecture]["parts"][args.part]
+	tilegrid = database.get_tilegrid(args.family, args.part)
+	device_info = database.get_devices()["families"][args.family]["devices"][args.part]
 
 	max_row = device_info["max_row"]
 	max_col = device_info["max_col"]
