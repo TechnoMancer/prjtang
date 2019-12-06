@@ -5,6 +5,7 @@ Convert the tile grid for a given family and device to HTML format
 import sys, re
 import argparse
 import database
+import tiles as tilelib
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('family', type=str,
@@ -53,13 +54,11 @@ def main(argv):
 			row.append([])
 		tiles.append(row)
 
-	for row in tilegrid:
-		for item in row:
-			x = int(item["x"])
-			y = int(item["y"])
-			for data in item["val"]:
-				colour = get_colour(data["type"])
-				tiles[y][x].append((data["inst"], data["type"], colour))
+	for identifier, data in sorted(tilegrid.items()):
+		name = identifier.split(":")[0]
+		x, y = tilelib.pos_from_name(name, (max_row, max_col), 0)
+		colour = get_colour(data["type"])
+		tiles[y][x].append((data["inst"], data["type"], colour))
 
 	f = args.outfile
 	print(

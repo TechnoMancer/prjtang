@@ -46,26 +46,19 @@ def extract_elements(infile, tiles, max_row):
 				val = loc.split('y')
 				x = int(val[0].lstrip('x'))
 				y = max_row - 1 - int(val[1])
+				tile_name = loc + ":" + type
 				current_tile = {
 					"x": x,
 					"y": y,
 					"loc": loc,
-					"val": []
-				}
-				if (tiles[y][x]==0):
-					tiles[y][x] = current_tile
-				current_item = {
 					"inst": inst,
 					"type": type,
 					"wl_beg": int(wl_beg),
-					"bl_beg": int(bl_beg)
+					"bl_beg": int(bl_beg),
+					"sites": []
 				}
-				found = False
-				for item in tiles[y][x]["val"]:
-					if(item["inst"]==inst):
-						found = True
-				if found==False:
-					tiles[y][x]["val"].append(current_item)
+				if tile_name not in tiles:
+					tiles[tile_name] = current_tile
 	
 def extract_fuses(infile, family, device):
 	frames = 0
@@ -94,7 +87,7 @@ def main():
 			max_row = int(selected_device["max_row"])
 			max_col = int(selected_device["max_col"])
 
-			tiles = [[0 for y in range(max_col)] for x in range(max_row)] 
+			tiles = {}
 			prepare_tcl(path.join(database.get_tang_root(), "minitests", "tilegrid", "wire.tcl"), "work_tilegrid/wire.tcl", device, package)
 			prepare_pnl(family, device, package, max_row, max_col)
 			tangdinasty.run("wire.tcl", "work_tilegrid", stdout=True)
