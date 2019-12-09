@@ -7,7 +7,6 @@ Adapted from Project Trellis interconnect fuzzing code.
 import threading
 import tiles
 import database
-import bitstream
 import pytang
 
 import os

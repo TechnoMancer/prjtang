@@ -7,7 +7,6 @@ Adapted from Project Trellis
 import threading
 import tiles
 import database
-import bitstream
 import pytang
 
 import os
@@ -61,7 +60,7 @@ def fuzz_word_setting(config, name, length, get_pnl_substs, empty_bitfile=None):
     for t in config.tiles:
         if not is_empty[t]:
             tile_dbs[t].add_setting_word(wsb[t])
-                tile_dbs[t].save()
+            tile_dbs[t].save()
 
 
 def fuzz_enum_setting(config, name, values, get_pnl_substs, empty_bitfile=None, include_zeros=True, ignore_cover=None,
